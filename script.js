@@ -5,11 +5,11 @@ document.getElementById("expression-form").addEventListener("submit", function(e
   const stepsDiv = document.getElementById("steps");
 
   try {
+    const tokens = tokenize(input);
     const steps = [];
-    const result = evaluateFractionExpression(input, steps);
+    const result = evaluateTokens(tokens, steps);
     const simplified = simplifyFraction(result.num, result.den);
 
-    // Mostra i passaggi
     stepsDiv.innerHTML = `
       <p><strong>Espressione:</strong> ${input}</p>
       ${steps.map(step => `<p>➡️ ${step}</p>`).join("")}
@@ -20,37 +20,64 @@ document.getElementById("expression-form").addEventListener("submit", function(e
   }
 });
 
-function evaluateFractionExpression(expr, steps) {
-  const tokens = expr.match(/(\d+\/\d+|[+-])/g);
+// Tokenizza: "1/2 + (1/3 - 1/6)" → ["1/2", "+", "(", "1/3", "-", "1/6", ")"]
+function tokenize(expr) {
+  return expr.match(/\d+\/\d+|[()+-]/g);
+}
 
-  if (!tokens || tokens.length < 3) {
-    throw new Error("Espressione non valida. Usa frazioni nel formato a/b + c/d");
+// Valuta un array di token, supportando parentesi
+function evaluateTokens(tokens, steps) {
+  const output = [];
+  const stack = [];
+
+  let i = 0;
+  while (i < tokens.length) {
+    const token = tokens[i];
+
+    if (token === "(") {
+      // Trova la chiusura e valuta ricorsivamente
+      const subExpr = [];
+      let depth = 1;
+      i++;
+      while (i < tokens.length && depth > 0) {
+        if (tokens[i] === "(") depth++;
+        else if (tokens[i] === ")") depth--;
+        if (depth > 0) subExpr.push(tokens[i]);
+        i++;
+      }
+      output.push(evaluateTokens(subExpr, steps));
+    } else if (token === "+" || token === "-") {
+      stack.push(token);
+      i++;
+    } else {
+      // È una frazione
+      output.push(parseFraction(token));
+      i++;
+    }
+
+    // Se ci sono almeno 3 elementi, risolvi l’operazione corrente
+    while (output.length >= 3 && typeof stack[stack.length - 1] === "string") {
+      const b = output.pop();
+      const a = output.pop();
+      const op = stack.pop();
+
+      const mcd = lcm(a.den, b.den);
+      const n1 = a.num * (mcd / a.den);
+      const n2 = b.num * (mcd / b.den);
+      const newNum = (op === '+') ? n1 + n2 : n1 - n2;
+      const current = { num: newNum, den: mcd };
+
+      steps.push(`${a.num}/${a.den} ${op} ${b.num}/${b.den} → ${n1}/${mcd} ${op} ${n2}/${mcd} = ${newNum}/${mcd}`);
+      output.push(current);
+    }
   }
 
-  let current = parseFraction(tokens[0]);
-
-  for (let i = 1; i < tokens.length; i += 2) {
-    const op = tokens[i];
-    const next = parseFraction(tokens[i + 1]);
-
-    const mcd = lcm(current.den, next.den);
-    const n1 = current.num * (mcd / current.den);
-    const n2 = next.num * (mcd / next.den);
-
-    const stepText = `${current.num}/${current.den} ${op} ${next.num}/${next.den} → ` +
-                     `${n1}/${mcd} ${op} ${n2}/${mcd}`;
-
-    const newNum = (op === '+') ? (n1 + n2) : (n1 - n2);
-    current = { num: newNum, den: mcd };
-
-    steps.push(stepText);
-    steps.push(`= ${newNum}/${mcd}`);
-  }
-
-  return current;
+  if (output.length !== 1) throw new Error("Espressione malformata");
+  return output[0];
 }
 
 function parseFraction(str) {
+  if (typeof str === "object") return str;
   const parts = str.split('/');
   if (parts.length !== 2) throw new Error("Frazione malformata: " + str);
   return { num: parseInt(parts[0]), den: parseInt(parts[1]) };
