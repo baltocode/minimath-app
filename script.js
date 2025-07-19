@@ -1,61 +1,70 @@
 document.getElementById("expression-form").addEventListener("submit", function(event) {
   event.preventDefault();
 
-  const input = document.getElementById("expression").value;
+  const input = document.getElementById("expression").value.trim();
   const stepsDiv = document.getElementById("steps");
 
-  // Regex per catturare: frazione1, operatore, frazione2
-  const match = input.match(/^\s*(\d+)\/(\d+)\s*([+-])\s*(\d+)\/(\d+)\s*$/);
+  try {
+    const steps = [];
+    const result = evaluateFractionExpression(input, steps);
+    const simplified = simplifyFraction(result.num, result.den);
 
-  if (!match) {
-    stepsDiv.innerHTML = "<p style='color:red;'>Espressione non riconosciuta. Usa il formato: a/b + c/d</p>";
-    return;
+    // Mostra i passaggi
+    stepsDiv.innerHTML = `
+      <p><strong>Espressione:</strong> ${input}</p>
+      ${steps.map(step => `<p>➡️ ${step}</p>`).join("")}
+      <p>✅ Risultato semplificato: <strong>${simplified.num}/${simplified.den}</strong></p>
+    `;
+  } catch (error) {
+    stepsDiv.innerHTML = `<p style='color:red;'>Errore: ${error.message}</p>`;
   }
-
-  // Estrai numeri
-  const a = parseInt(match[1]); // numeratore 1
-  const b = parseInt(match[2]); // denominatore 1
-  const op = match[3];          // operatore: + o -
-  const c = parseInt(match[4]); // numeratore 2
-  const d = parseInt(match[5]); // denominatore 2
-
-  // Calcola m.c.d. (minimo comune denominatore)
-  const mcd = lcm(b, d);
-
-  const a1 = a * (mcd / b);
-  const c1 = c * (mcd / d);
-
-  const resultNumerator = (op === '+') ? a1 + c1 : a1 - c1;
-  const resultDenominator = mcd;
-
-  const simplified = simplifyFraction(resultNumerator, resultDenominator);
-
-  // Mostra i passaggi
-  stepsDiv.innerHTML = `
-    <p><strong>Espressione:</strong> ${a}/${b} ${op} ${c}/${d}</p>
-    <p>➡️ Passaggio 1: minimo comune denominatore = ${mcd}</p>
-    <p>➡️ Passaggio 2: riscrivo le frazioni:<br>
-       ${a}/${b} → ${a1}/${mcd}<br>
-       ${c}/${d} → ${c1}/${mcd}</p>
-    <p>➡️ Passaggio 3: somma i numeratori:<br>
-       ${a1} ${op} ${c1} = ${resultNumerator}</p>
-    <p>➡️ Risultato: ${resultNumerator}/${resultDenominator}</p>
-    <p>✅ Risultato semplificato: <strong>${simplified.num}/${simplified.den}</strong></p>
-  `;
 });
 
-function lcm(a, b) {
-  return (a * b) / gcd(a, b);
+function evaluateFractionExpression(expr, steps) {
+  const tokens = expr.match(/(\d+\/\d+|[+-])/g);
+
+  if (!tokens || tokens.length < 3) {
+    throw new Error("Espressione non valida. Usa frazioni nel formato a/b + c/d");
+  }
+
+  let current = parseFraction(tokens[0]);
+
+  for (let i = 1; i < tokens.length; i += 2) {
+    const op = tokens[i];
+    const next = parseFraction(tokens[i + 1]);
+
+    const mcd = lcm(current.den, next.den);
+    const n1 = current.num * (mcd / current.den);
+    const n2 = next.num * (mcd / next.den);
+
+    const stepText = `${current.num}/${current.den} ${op} ${next.num}/${next.den} → ` +
+                     `${n1}/${mcd} ${op} ${n2}/${mcd}`;
+
+    const newNum = (op === '+') ? (n1 + n2) : (n1 - n2);
+    current = { num: newNum, den: mcd };
+
+    steps.push(stepText);
+    steps.push(`= ${newNum}/${mcd}`);
+  }
+
+  return current;
+}
+
+function parseFraction(str) {
+  const parts = str.split('/');
+  if (parts.length !== 2) throw new Error("Frazione malformata: " + str);
+  return { num: parseInt(parts[0]), den: parseInt(parts[1]) };
+}
+
+function simplifyFraction(n, d) {
+  const g = gcd(n, d);
+  return { num: n / g, den: d / g };
 }
 
 function gcd(a, b) {
   return b === 0 ? a : gcd(b, a % b);
 }
 
-function simplifyFraction(n, d) {
-  const g = gcd(n, d);
-  return {
-    num: n / g,
-    den: d / g
-  };
+function lcm(a, b) {
+  return Math.abs(a * b) / gcd(a, b);
 }
