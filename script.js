@@ -20,27 +20,40 @@ document.getElementById("expression-form").addEventListener("submit", function(e
 });
 
 function tokenize(expr) {
-  return expr.match(/\d+\/\d+|\d+|[()+-]/g);
+  return expr.match(/\d+\/\d+|\d+|[()+\-*/:]/g);
 }
-
 
 function evaluate(tokens, steps = []) {
   const output = [];
   const operators = [];
+
+  const precedence = { '+': 1, '-': 1, '*': 2, '/': 2, ':': 2 };
 
   const applyOp = () => {
     const b = output.pop();
     const a = output.pop();
     const op = operators.pop();
 
-    const mcd = lcm(a.den, b.den);
-    const n1 = a.num * (mcd / a.den);
-    const n2 = b.num * (mcd / b.den);
-    const newNum = (op === '+') ? n1 + n2 : n1 - n2;
-    const current = { num: newNum, den: mcd };
+    let result, stepText;
 
-    steps.push(`${a.num}/${a.den} ${op} ${b.num}/${b.den} → ${n1}/${mcd} ${op} ${n2}/${mcd} = ${newNum}/${mcd}`);
-    output.push(current);
+    if (op === '+' || op === '-') {
+      const mcd = lcm(a.den, b.den);
+      const n1 = a.num * (mcd / a.den);
+      const n2 = b.num * (mcd / b.den);
+      const newNum = (op === '+') ? n1 + n2 : n1 - n2;
+      result = { num: newNum, den: mcd };
+      stepText = `${a.num}/${a.den} ${op} ${b.num}/${b.den} → ${n1}/${mcd} ${op} ${n2}/${mcd} = ${newNum}/${mcd}`;
+    } else if (op === '*') {
+      result = { num: a.num * b.num, den: a.den * b.den };
+      stepText = `${a.num}/${a.den} × ${b.num}/${b.den} = ${result.num}/${result.den}`;
+    } else if (op === '/' || op === ':') {
+      if (b.num === 0) throw new Error("Divisione per zero");
+      result = { num: a.num * b.den, den: a.den * b.num };
+      stepText = `${a.num}/${a.den} ÷ ${b.num}/${b.den} = ${result.num}/${result.den}`;
+    }
+
+    steps.push(stepText);
+    output.push(result);
   };
 
   let i = 0;
@@ -48,7 +61,6 @@ function evaluate(tokens, steps = []) {
     const token = tokens[i];
 
     if (token === "(") {
-      // Trova sotto-espressione e valuta ricorsivamente
       let depth = 1;
       let j = i + 1;
       const subExpr = [];
@@ -58,21 +70,27 @@ function evaluate(tokens, steps = []) {
         if (depth > 0) subExpr.push(tokens[j]);
         j++;
       }
-      const [subResult, _] = evaluate(subExpr, steps);
+      const subEvaluation = evaluate(subExpr, steps);
+      const subResult = subEvaluation[0];
       output.push(subResult);
       i = j;
-    } else if (token === "+" || token === "-") {
+    } else if ("+-*/:".includes(token)) {
+      while (
+        operators.length &&
+        precedence[operators[operators.length - 1]] >= precedence[token]
+      ) {
+        applyOp();
+      }
       operators.push(token);
       i++;
     } else {
       output.push(parseFraction(token));
       i++;
     }
+  }
 
-    // Applica l'operatore appena hai due operandi
-    while (output.length >= 2 && operators.length >= 1) {
-      applyOp();
-    }
+  while (operators.length > 0) {
+    applyOp();
   }
 
   if (output.length !== 1) throw new Error("Espressione malformata");
@@ -87,11 +105,9 @@ function parseFraction(str) {
     if (parts.length !== 2) throw new Error("Frazione malformata: " + str);
     return { num: parseInt(parts[0]), den: parseInt(parts[1]) };
   } else {
-    // È un numero intero → trasformalo in frazione con denominatore 1
     return { num: parseInt(str), den: 1 };
   }
 }
-
 
 function simplifyFraction(n, d) {
   const g = gcd(n, d);
