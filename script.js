@@ -20,8 +20,9 @@ document.getElementById("expression-form").addEventListener("submit", function(e
 });
 
 function tokenize(expr) {
-  return expr.match(/\d+\/\d+|[()+-]/g);
+  return expr.match(/\d+\/\d+|\d+|[()+-]/g);
 }
+
 
 function evaluate(tokens, steps = []) {
   const output = [];
@@ -80,10 +81,17 @@ function evaluate(tokens, steps = []) {
 
 function parseFraction(str) {
   if (typeof str === "object") return str;
-  const parts = str.split('/');
-  if (parts.length !== 2) throw new Error("Frazione malformata: " + str);
-  return { num: parseInt(parts[0]), den: parseInt(parts[1]) };
+
+  if (str.includes('/')) {
+    const parts = str.split('/');
+    if (parts.length !== 2) throw new Error("Frazione malformata: " + str);
+    return { num: parseInt(parts[0]), den: parseInt(parts[1]) };
+  } else {
+    // È un numero intero → trasformalo in frazione con denominatore 1
+    return { num: parseInt(str), den: 1 };
+  }
 }
+
 
 function simplifyFraction(n, d) {
   const g = gcd(n, d);
