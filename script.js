@@ -22,7 +22,30 @@ document.getElementById("expression-form").addEventListener("submit", function(e
 function tokenize(expr) {
   return expr.match(/\d+\/\d+|\d+|[()+\-*/:^]/g);
 }
+function mcd(a, b) {
+  while (b !== 0) {
+    const t = b;
+    b = a % b;
+    a = t;
+  }
+  return a;
+}
 
+function semplificaFrazione(frazione) {
+  const mcdVal = mcd(Math.abs(frazione.num), Math.abs(frazione.den));
+  const semplificata = {
+    num: frazione.num / mcdVal,
+    den: frazione.den / mcdVal,
+  };
+
+  let spiegazione = null;
+
+  if (mcdVal > 1) {
+    spiegazione = `${frazione.num}/${frazione.den} → MCD = ${mcdVal} → (${frazione.num} ÷ ${mcdVal})/(${frazione.den} ÷ ${mcdVal}) = ${semplificata.num}/${semplificata.den}`;
+  }
+
+  return { ...semplificata, spiegazione };
+}
 
 function evaluate(tokens, steps = []) {
   const output = [];
@@ -43,15 +66,33 @@ function evaluate(tokens, steps = []) {
       const n2 = b.num * (mcd / b.den);
       const newNum = (op === '+') ? n1 + n2 : n1 - n2;
       result = { num: newNum, den: mcd };
+      const simpl = semplificaFrazione(result);
+result = { num: simpl.num, den: simpl.den };
+
+if (simpl.spiegazione) {
+  steps.push(`✳️ Semplificazione: ${simpl.spiegazione}`);
+}
+
       stepText = `${a.num}/${a.den} ${op} ${b.num}/${b.den} → ${n1}/${mcd} ${op} ${n2}/${mcd} = ${newNum}/${mcd}`;
-    } else if (op === '*') {
+    } 
+
+    else if (op === '*') {
       result = { num: a.num * b.num, den: a.den * b.den };
       stepText = `${a.num}/${a.den} × ${b.num}/${b.den} = ${result.num}/${result.den}`;
     } else if (op === '/' || op === ':') {
       if (b.num === 0) throw new Error("Divisione per zero");
       result = { num: a.num * b.den, den: a.den * b.num };
+      const simpl = semplificaFrazione(result);
+result = { num: simpl.num, den: simpl.den };
+
+if (simpl.spiegazione) {
+  steps.push(`✳️ Semplificazione: ${simpl.spiegazione}`);
+}
+
       stepText = `${a.num}/${a.den} ÷ ${b.num}/${b.den} = ${result.num}/${result.den}`;
-    } else if (op === '^') {
+    } 
+
+    else if (op === '^') {
       if (!Number.isInteger(b.num / b.den)) {
         throw new Error("L'esponente deve essere un numero intero");
       }
@@ -59,8 +100,17 @@ function evaluate(tokens, steps = []) {
       const newNum = Math.pow(a.num, exponent);
       const newDen = Math.pow(a.den, exponent);
       result = { num: newNum, den: newDen };
+      const simpl = semplificaFrazione(result);
+result = { num: simpl.num, den: simpl.den };
+
+if (simpl.spiegazione) {
+  steps.push(`✳️ Semplificazione: ${simpl.spiegazione}`);
+}
+
       stepText = `(${a.num}/${a.den})^${exponent} = ${newNum}/${newDen}`;
     }
+    
+
 
     steps.push(stepText);
     output.push(result);
