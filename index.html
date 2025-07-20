@@ -1,23 +1,20 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <title>MiniMath App</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MiniMath</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>MiniMath</h1>
-
-  <form id="expression-form">
-    <label for="expression">Inserisci un'espressione:</label><br>
-    <input type="text" id="expression" placeholder="Es: (2/3 + 1/6) × 3"><br>
-    <button type="submit">Risolvi</button>
-  </form>
-
-  <div id="steps">
-    <!-- Qui appariranno i passaggi -->
+  <div class="container">
+    <h1>🧮 MiniMath</h1>
+    <form id="expression-form">
+      <input type="text" id="expression" placeholder="Inserisci un'espressione..." required />
+      <button type="submit">➕ Risolvi</button>
+    </form>
+    <div id="steps"></div>
   </div>
-
   <script src="script.js"></script>
 </body>
 </html>
