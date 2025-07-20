@@ -20,14 +20,15 @@ document.getElementById("expression-form").addEventListener("submit", function(e
 });
 
 function tokenize(expr) {
-  return expr.match(/\d+\/\d+|\d+|[()+\-*/:]/g);
+  return expr.match(/\d+\/\d+|\d+|[()+\-*/:^]/g);
 }
+
 
 function evaluate(tokens, steps = []) {
   const output = [];
   const operators = [];
 
-  const precedence = { '+': 1, '-': 1, '*': 2, '/': 2, ':': 2 };
+  const precedence = { '+': 1, '-': 1, '*': 2, '/': 2, ':': 2, '^': 3 };
 
   const applyOp = () => {
     const b = output.pop();
@@ -50,6 +51,15 @@ function evaluate(tokens, steps = []) {
       if (b.num === 0) throw new Error("Divisione per zero");
       result = { num: a.num * b.den, den: a.den * b.num };
       stepText = `${a.num}/${a.den} ÷ ${b.num}/${b.den} = ${result.num}/${result.den}`;
+    } else if (op === '^') {
+      if (!Number.isInteger(b.num / b.den)) {
+        throw new Error("L'esponente deve essere un numero intero");
+      }
+      const exponent = b.num / b.den;
+      const newNum = Math.pow(a.num, exponent);
+      const newDen = Math.pow(a.den, exponent);
+      result = { num: newNum, den: newDen };
+      stepText = `(${a.num}/${a.den})^${exponent} = ${newNum}/${newDen}`;
     }
 
     steps.push(stepText);
@@ -74,7 +84,7 @@ function evaluate(tokens, steps = []) {
       const subResult = subEvaluation[0];
       output.push(subResult);
       i = j;
-    } else if ("+-*/:".includes(token)) {
+    } else if ("+-*/:^".includes(token)) {
       while (
         operators.length &&
         precedence[operators[operators.length - 1]] >= precedence[token]
@@ -96,6 +106,7 @@ function evaluate(tokens, steps = []) {
   if (output.length !== 1) throw new Error("Espressione malformata");
   return [output[0], steps];
 }
+
 
 function parseFraction(str) {
   if (typeof str === "object") return str;
